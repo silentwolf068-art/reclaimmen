@@ -29,8 +29,8 @@ export default function LiveChatPage() {
     loadMessages();
   }, [channel]);
 
-  const loadMessages = () => {
-    const msgs = dataService.getChatMessages(channel);
+  const loadMessages = async () => {
+    const msgs = await dataService.getChatMessages(channel);
     setMessages(msgs);
     scrollToBottom();
   };
@@ -41,18 +41,19 @@ export default function LiveChatPage() {
     }, 100);
   };
 
-  const handleSend = (e: React.FormEvent) => {
+  const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputMessage.trim() || !user) return;
 
-    dataService.addChatMessage(user.id, channel, inputMessage.trim());
+    const msgText = inputMessage.trim();
     setInputMessage('');
-    loadMessages();
+    await dataService.addChatMessage(user.id, channel, msgText);
+    await loadMessages();
   };
 
-  const handleReaction = (msgId: string, type: 'fire' | 'bicep' | 'shield') => {
-    dataService.reactToChatMessage(msgId, type);
-    loadMessages();
+  const handleReaction = async (msgId: string, type: 'fire' | 'bicep' | 'shield') => {
+    await dataService.reactToChatMessage(msgId, type);
+    await loadMessages();
   };
 
   const channelsList = [

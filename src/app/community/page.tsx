@@ -21,14 +21,21 @@ export default function CommunityPage() {
   const [responses, setResponses] = useState<QuestionResponse[]>([]);
 
   useEffect(() => {
-    setStats(dataService.getCommunityStats());
-    setFeed(dataService.getCommunityFeed());
-    setResponses(dataService.getQuestionResponses());
+    async function loadData() {
+      const s = await dataService.getCommunityStats();
+      const f = await dataService.getCommunityFeed();
+      const r = dataService.getQuestionResponses();
+      setStats(s);
+      setFeed(f);
+      setResponses(r);
+    }
+    loadData();
   }, []);
 
-  const handleReaction = (feedId: string, type: 'fire' | 'ice' | 'bicep') => {
-    dataService.reactToFeedItem(feedId, type);
-    setFeed(dataService.getCommunityFeed());
+  const handleReaction = async (feedId: string, type: 'fire' | 'ice' | 'bicep') => {
+    await dataService.reactToFeedItem(feedId, type);
+    const f = await dataService.getCommunityFeed();
+    setFeed(f);
   };
 
   if (!stats) {

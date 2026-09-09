@@ -24,7 +24,11 @@ export default function LandingPage() {
   const [stats, setStats] = useState<CommunityStats | null>(null);
 
   useEffect(() => {
-    setStats(dataService.getCommunityStats());
+    async function loadStats() {
+      const s = await dataService.getCommunityStats();
+      setStats(s);
+    }
+    loadStats();
   }, []);
 
   const commitmentsList = [

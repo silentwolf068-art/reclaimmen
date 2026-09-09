@@ -26,16 +26,19 @@ export default function DashboardPage() {
   const [badges, setBadges] = useState<MilestoneBadge[]>([]);
 
   useEffect(() => {
-    const curUser = dataService.getCurrentUser();
-    if (curUser) {
-      setUser(curUser);
-      const strk = dataService.getUserStreak(curUser.id);
-      setStreak(strk);
-      const chk = dataService.getTodayCheckin(curUser.id);
-      setTodayCheckin(chk);
-      const bdgs = dataService.getUserBadges(strk.bestStreak);
-      setBadges(bdgs);
+    async function loadData() {
+      const curUser = dataService.getCurrentUser();
+      if (curUser) {
+        setUser(curUser);
+        const strk = await dataService.getUserStreak(curUser.id);
+        setStreak(strk);
+        const chk = await dataService.getTodayCheckin(curUser.id);
+        setTodayCheckin(chk);
+        const bdgs = dataService.getUserBadges(strk.bestStreak);
+        setBadges(bdgs);
+      }
     }
+    loadData();
   }, []);
 
   if (!user || !streak) {

@@ -10,12 +10,15 @@ export default function MilestonesPage() {
   const [badges, setBadges] = useState<MilestoneBadge[]>([]);
 
   useEffect(() => {
-    const curUser = dataService.getCurrentUser();
-    if (curUser) {
-      const strk = dataService.getUserStreak(curUser.id);
-      setStreak(strk);
-      setBadges(dataService.getUserBadges(strk.bestStreak));
+    async function loadMilestones() {
+      const curUser = dataService.getCurrentUser();
+      if (curUser) {
+        const strk = await dataService.getUserStreak(curUser.id);
+        setStreak(strk);
+        setBadges(dataService.getUserBadges(strk.bestStreak));
+      }
     }
+    loadMilestones();
   }, []);
 
   return (

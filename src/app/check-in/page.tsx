@@ -38,33 +38,36 @@ export default function CheckInPage() {
   const [communityAnswer, setCommunityAnswer] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [submittedScore, setSubmittedScore] = useState<number | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    const curUser = dataService.getCurrentUser();
-    if (curUser) {
-      setUser(curUser);
-      const day = calculatePersonalDay(curUser.startDate);
-      setPersonalDay(day);
+    async function loadData() {
+      const curUser = dataService.getCurrentUser();
+      if (curUser) {
+        setUser(curUser);
+        const day = calculatePersonalDay(curUser.startDate);
+        setPersonalDay(day);
 
-      // Check if existing checkin today
-      const todayChk = dataService.getTodayCheckin(curUser.id);
-      if (todayChk) {
-        setCommitments({
-          noPorn: todayChk.noPorn,
-          noMasturbation: todayChk.noMasturbation,
-          noDoomscrolling: todayChk.noDoomscrolling,
-          wake5am: todayChk.wake5am,
-          meditation: todayChk.meditation,
-          journaling: todayChk.journaling,
-          noFoodEntertainment: todayChk.noFoodEntertainment,
-          movement: todayChk.movement
-        });
-        if (todayChk.privateReflection) {
-          setPrivateReflection(todayChk.privateReflection);
+        const todayChk = await dataService.getTodayCheckin(curUser.id);
+        if (todayChk) {
+          setCommitments({
+            noPorn: todayChk.noPorn,
+            noMasturbation: todayChk.noMasturbation,
+            noDoomscrolling: todayChk.noDoomscrolling,
+            wake5am: todayChk.wake5am,
+            meditation: todayChk.meditation,
+            journaling: todayChk.journaling,
+            noFoodEntertainment: todayChk.noFoodEntertainment,
+            movement: todayChk.movement
+          });
+          if (todayChk.privateReflection) {
+            setPrivateReflection(todayChk.privateReflection);
+          }
         }
       }
+      setQuestion(dataService.getTodayQuestion());
     }
-    setQuestion(dataService.getTodayQuestion());
+    loadData();
   }, []);
 
   const toggleCommitment = (key: keyof CommitmentsState) => {
@@ -76,33 +79,37 @@ export default function CheckInPage() {
 
   const currentScore = Object.values(commitments).filter(Boolean).length;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
+    setSubmitting(true);
 
-    // Save checkin record
-    const saved = dataService.saveDailyCheckin(user.id, commitments, privateReflection);
+    try {
+      const saved = await dataService.saveDailyCheckin(user.id, commitments, privateReflection);
 
-    // Save community question answer if provided
-    if (question && communityAnswer.trim()) {
-      dataService.addQuestionResponse(question.id, communityAnswer.trim());
-      // Also post to feed as anonymous reflection
-      dataService.addFeedItem(user.id, communityAnswer.trim(), saved.score, personalDay);
-    }
-
-    setSubmittedScore(saved.score);
-    setSubmitted(true);
-
-    if (saved.score === 8) {
-      try {
-        confetti({
-          particleCount: 80,
-          spread: 70,
-          origin: { y: 0.6 }
-        });
-      } catch (err) {
-        // Fallback
+      if (question && communityAnswer.trim()) {
+        dataService.addQuestionResponse(question.id, communityAnswer.trim());
+        await dataService.addFeedItem(user.id, communityAnswer.trim(), saved.score, personalDay);
       }
+
+      setSubmittedScore(saved.score);
+      setSubmitted(true);
+
+      if (saved.score === 8) {
+        try {
+          confetti({
+            particleCount: 80,
+            spread: 70,
+            origin: { y: 0.6 }
+          });
+        } catch (err) {
+          // Fallback
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -274,9 +281,10 @@ export default function CheckInPage() {
           {/* SUBMIT BUTTON */}
           <button
             type="submit"
-            className="w-full py-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-sm uppercase tracking-wider flex items-center justify-center gap-2 transition-all glow-emerald"
+            disabled={submitting}
+            className="w-full py-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-sm uppercase tracking-wider flex items-center justify-center gap-2 transition-all glow-emerald disabled:opacity-50"
           >
-            <span>SUBMIT DAY {personalDay} ROLL CALL ({currentScore}/8)</span>
+            <span>{submitting ? 'LOGGING CHECKIN TO SUPABASE...' : `SUBMIT DAY ${personalDay} ROLL CALL (${currentScore}/8)`}</span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </form>

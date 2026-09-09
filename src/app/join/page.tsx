@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Shield, Lock, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { Shield, ArrowRight } from 'lucide-react';
 import { dataService } from '@/lib/dataService';
 import { generateArcId } from '@/lib/arcId';
 
@@ -15,15 +15,17 @@ export default function JoinPage() {
   const [previewArcId] = useState(generateArcId());
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-
-    setTimeout(() => {
-      dataService.registerUser(email, handle);
-      setLoading(false);
+    try {
+      await dataService.registerUser(email, handle);
       router.push('/dashboard');
-    }, 400);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -33,7 +35,7 @@ export default function JoinPage() {
           <Shield className="w-6 h-6" />
         </div>
         <h1 className="text-2xl font-extrabold text-white">JOIN RECLAIM MEN</h1>
-        <p className="text-xs text-zinc-400">Begin your 92-day Winter Arc personal journey today.</p>
+        <p className="text-xs text-zinc-400">Begin your 108-day Winter Arc personal journey today.</p>
       </div>
 
       <div className="glass-panel p-6 rounded-2xl border border-white/10 space-y-6">
@@ -44,7 +46,7 @@ export default function JoinPage() {
             {previewArcId}
           </div>
           <p className="text-[11px] text-zinc-400">
-            Assigned automatically. Your real name and email remain 100% private.
+            Assigned automatically. Your real email remains 100% private.
           </p>
         </div>
 
@@ -59,7 +61,6 @@ export default function JoinPage() {
               placeholder="you@domain.com"
               className="w-full px-3.5 py-2.5 rounded-lg bg-zinc-900 border border-zinc-800 text-white text-sm focus:border-emerald-500 focus:outline-none"
             />
-            <p className="text-[10px] text-zinc-500 mt-1">Used solely for authentication recovery.</p>
           </div>
 
           <div>
