@@ -1,4 +1,5 @@
 import { MilestoneBadge } from '@/types';
+import { TOTAL_ARC_DAYS } from './dateUtils';
 
 export const MASTER_BADGES: MilestoneBadge[] = [
   {
@@ -6,7 +7,7 @@ export const MASTER_BADGES: MilestoneBadge[] = [
     name: 'STARTED',
     icon: '🧊',
     threshold: 1,
-    description: 'Began the 92-day Winter Arc journey.'
+    description: 'Began the 108-day Winter Arc journey.'
   },
   {
     id: 'day_3',
@@ -48,7 +49,7 @@ export const MASTER_BADGES: MilestoneBadge[] = [
     name: 'UNSHAKEN',
     icon: '🔥',
     threshold: 45,
-    description: 'Halfway through the 92-day Arc.'
+    description: 'Halfway through the Winter Arc.'
   },
   {
     id: 'day_60',
@@ -65,11 +66,11 @@ export const MASTER_BADGES: MilestoneBadge[] = [
     description: '75 days of elite adherence.'
   },
   {
-    id: 'day_92',
+    id: 'day_108',
     name: 'WINTER ARC COMPLETE',
     icon: '👑',
-    threshold: 92,
-    description: 'Conquered the entire 92-Day Winter Arc!'
+    threshold: TOTAL_ARC_DAYS,
+    description: 'Conquered the entire 108-Day Winter Arc (Sept 15 → Dec 31)!'
   }
 ];
 

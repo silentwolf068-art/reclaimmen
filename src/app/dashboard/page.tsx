@@ -15,7 +15,7 @@ import {
   Lock
 } from 'lucide-react';
 import { dataService } from '@/lib/dataService';
-import { calculatePersonalDay, getDaysRemainingInArc } from '@/lib/dateUtils';
+import { calculatePersonalDay, getDaysRemainingInArc, TOTAL_ARC_DAYS } from '@/lib/dateUtils';
 import { getNextMilestone } from '@/lib/badgeEngine';
 import { UserProfile, DailyCheckin, UserStreak, MilestoneBadge } from '@/types';
 
@@ -68,10 +68,10 @@ export default function DashboardPage() {
             )}
           </div>
           <h1 className="text-3xl font-extrabold text-white flex items-center gap-3">
-            DAY {personalDay} <span className="text-zinc-500 font-normal text-xl">/ 92</span>
+            DAY {personalDay} <span className="text-zinc-500 font-normal text-xl">/ {TOTAL_ARC_DAYS}</span>
           </h1>
           <p className="text-xs text-zinc-400 mt-1">
-            WINTER ARC 2026 • {daysRemaining} days remaining in your 92-day personal arc
+            WINTER ARC 2026 (Sept 15 → Dec 31) • {daysRemaining} days remaining in your journey
           </p>
         </div>
 
@@ -113,7 +113,7 @@ export default function DashboardPage() {
         <div className="glass-card p-6 rounded-2xl border border-amber-500/30 flex flex-col sm:flex-row items-center justify-between gap-4 bg-amber-950/20">
           <div className="space-y-1 text-center sm:text-left">
             <div className="text-xs font-mono uppercase tracking-widest text-amber-400 font-bold">
-              ROLL CALL PENDING
+              ROLL CALL PENDING FOR DAY {personalDay}
             </div>
             <div className="text-lg font-bold text-white">
               Have you shown up for your 8 commitments today?
@@ -168,22 +168,22 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* ARC PROGRESS BAR TOWARD DAY 92 */}
+      {/* ARC PROGRESS BAR TOWARD DAY 108 */}
       <div className="glass-panel p-6 rounded-2xl border border-white/10 space-y-3">
         <div className="flex items-center justify-between text-xs">
           <span className="font-bold text-white uppercase tracking-wider font-mono">ARC JOURNEY PROGRESS</span>
-          <span className="font-mono text-emerald-400 font-bold">{Math.round((personalDay / 92) * 100)}% COMPLETE</span>
+          <span className="font-mono text-emerald-400 font-bold">{Math.round((personalDay / TOTAL_ARC_DAYS) * 100)}% COMPLETE</span>
         </div>
         <div className="w-full h-3 bg-zinc-900 rounded-full overflow-hidden border border-zinc-800 p-0.5">
           <div
             className="h-full bg-gradient-to-r from-emerald-500 via-teal-400 to-amber-400 rounded-full transition-all duration-500"
-            style={{ width: `${(personalDay / 92) * 100}%` }}
+            style={{ width: `${(personalDay / TOTAL_ARC_DAYS) * 100}%` }}
           />
         </div>
         <div className="flex items-center justify-between text-[11px] text-zinc-500 font-mono">
           <span>DAY 1 (Start)</span>
-          <span>DAY 45 (Midpoint)</span>
-          <span>DAY 92 (Winter Arc Complete 👑)</span>
+          <span>DAY 54 (Midpoint)</span>
+          <span>DAY 108 (Winter Arc Complete 👑)</span>
         </div>
       </div>
 
@@ -213,7 +213,7 @@ export default function DashboardPage() {
               <div className="space-y-1">
                 <div className="text-2xl">👑</div>
                 <h4 className="font-extrabold text-white">ALL MILESTONES UNLOCKED!</h4>
-                <p className="text-xs text-zinc-400">You are a true Winter Arc Master.</p>
+                <p className="text-xs text-zinc-400">You are a true Winter Arc Sovereign.</p>
               </div>
             )}
           </div>

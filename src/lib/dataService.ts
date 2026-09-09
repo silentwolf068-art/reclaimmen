@@ -10,141 +10,49 @@ import {
   CommitmentsState
 } from '@/types';
 import { generateArcId } from './arcId';
-import { calculatePersonalDay, getTodayIsoString } from './dateUtils';
+import { calculatePersonalDay, getTodayIsoString, TOTAL_ARC_DAYS } from './dateUtils';
 import { calculateUserStreak } from './streakEngine';
 import { evaluateUserBadges } from './badgeEngine';
+import { isSupabaseConfigured, supabase } from './supabaseClient';
 
-// LOCAL STORAGE KEYS FOR DUAL DATA ENGINE
 const STORAGE_CURRENT_USER = 'reclaim_men_current_user';
 const STORAGE_CHECKINS = 'reclaim_men_checkins';
 const STORAGE_FEED = 'reclaim_men_feed';
 const STORAGE_RESPONSES = 'reclaim_men_responses';
 
-// PRE-SEEDED TEST DATA
-const INITIAL_DEMO_USER: UserProfile = {
-  id: 'demo-user-123',
-  publicArcId: 'ARC-7F29K4',
-  anonymousUsername: 'IronMind',
-  startDate: new Date(Date.now() - 16 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Started 16 days ago
-  timezone: 'America/New_York',
-  status: 'active',
-  createdAt: new Date().toISOString()
-};
-
 function getStoredUser(): UserProfile | null {
-  if (typeof window === 'undefined') return INITIAL_DEMO_USER;
+  if (typeof window === 'undefined') return null;
   const raw = localStorage.getItem(STORAGE_CURRENT_USER);
-  if (!raw) {
-    localStorage.setItem(STORAGE_CURRENT_USER, JSON.stringify(INITIAL_DEMO_USER));
-    return INITIAL_DEMO_USER;
-  }
+  if (!raw) return null;
   try {
     return JSON.parse(raw);
   } catch {
-    return INITIAL_DEMO_USER;
+    return null;
   }
 }
 
-function getStoredCheckins(): DailyCheckin[] {
-  if (typeof window === 'undefined') return generateInitialDemoCheckins(INITIAL_DEMO_USER);
+function getStoredCheckins(userId: string): DailyCheckin[] {
+  if (typeof window === 'undefined') return [];
   const raw = localStorage.getItem(STORAGE_CHECKINS);
-  if (!raw) {
-    const seed = generateInitialDemoCheckins(INITIAL_DEMO_USER);
-    localStorage.setItem(STORAGE_CHECKINS, JSON.stringify(seed));
-    return seed;
+  if (!raw) return [];
+  try {
+    const all: DailyCheckin[] = JSON.parse(raw);
+    return all.filter((c) => c.userId === userId);
+  } catch {
+    return [];
   }
+}
+
+function getStoredFeed(): CommunityFeedItem[] {
+  if (typeof window === 'undefined') return [];
+  const raw = localStorage.getItem(STORAGE_FEED);
+  if (!raw) return [];
   try {
     return JSON.parse(raw);
   } catch {
     return [];
   }
 }
-
-function generateInitialDemoCheckins(user: UserProfile): DailyCheckin[] {
-  const checkins: DailyCheckin[] = [];
-  const startDate = new Date(user.startDate);
-
-  // Generate 16 consecutive days of checkins for demo user
-  for (let i = 0; i < 16; i++) {
-    const curDate = new Date(startDate.getTime() + i * 24 * 60 * 60 * 1000);
-    const dateStr = curDate.toISOString().split('T')[0];
-    const score = i === 12 ? 5 : 8; // Failed 1 day at day 13 (score 5/8)
-
-    checkins.push({
-      id: `checkin-${i + 1}`,
-      userId: user.id,
-      date: dateStr,
-      personalDay: i + 1,
-      noPorn: true,
-      noMasturbation: true,
-      noDoomscrolling: score === 8,
-      wake5am: score === 8,
-      meditation: true,
-      journaling: true,
-      noFoodEntertainment: score === 8,
-      movement: true,
-      score: score,
-      privateReflection: `Reflection for day ${i + 1}: Focused on deep work and eliminated distractions.`,
-      createdAt: curDate.toISOString(),
-      updatedAt: curDate.toISOString()
-    });
-  }
-
-  return checkins;
-}
-
-function getStoredFeed(): CommunityFeedItem[] {
-  if (typeof window === 'undefined') return INITIAL_DEMO_FEED;
-  const raw = localStorage.getItem(STORAGE_FEED);
-  if (!raw) {
-    localStorage.setItem(STORAGE_FEED, JSON.stringify(INITIAL_DEMO_FEED));
-    return INITIAL_DEMO_FEED;
-  }
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return INITIAL_DEMO_FEED;
-  }
-}
-
-const INITIAL_DEMO_FEED: CommunityFeedItem[] = [
-  {
-    id: 'feed-1',
-    userId: 'user-7291',
-    publicArcId: 'ARC-7291',
-    personalDay: 17,
-    score: 8,
-    reflection: 'Almost broke my streak tonight. Went for a 5km night walk instead. Discipline over impulse.',
-    fireReactions: 42,
-    iceReactions: 19,
-    bicepReactions: 31,
-    createdAt: new Date(Date.now() - 35 * 60 * 1000).toISOString()
-  },
-  {
-    id: 'feed-2',
-    userId: 'user-8102',
-    publicArcId: 'ARC-8102',
-    personalDay: 30,
-    score: 8,
-    reflection: 'Day 30 complete! Iron Month badge unlocked. Clean sleep, zero porn, 5 AM wakeups feel natural now.',
-    fireReactions: 89,
-    iceReactions: 45,
-    bicepReactions: 67,
-    createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
-  },
-  {
-    id: 'feed-3',
-    userId: 'user-4491',
-    publicArcId: 'ARC-4491',
-    personalDay: 7,
-    score: 7,
-    reflection: 'Missed 5 AM wake up, but completed all other 7 commitments. I own it. Tomorrow we go 8/8.',
-    fireReactions: 24,
-    iceReactions: 12,
-    bicepReactions: 18,
-    createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString()
-  }
-];
 
 const SAMPLE_COMMUNITY_QUESTIONS: CommunityQuestion[] = [
   {
@@ -169,10 +77,36 @@ export const dataService = {
       status: 'active',
       createdAt: new Date().toISOString()
     };
+
     if (typeof window !== 'undefined') {
       localStorage.setItem(STORAGE_CURRENT_USER, JSON.stringify(newUser));
-      localStorage.setItem(STORAGE_CHECKINS, JSON.stringify([]));
+      localStorage.setItem(STORAGE_CHECKINS, JSON.stringify([])); // FRESH USER HAS ZERO PREVIOUS CHECKINS
     }
+
+    // Async sync to Supabase if configured
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('profiles').insert({
+        id: newUser.id,
+        public_arc_id: newUser.publicArcId,
+        anonymous_username: newUser.anonymousUsername,
+        start_date: newUser.startDate,
+        timezone: newUser.timezone,
+        status: newUser.status
+      }).then(({ error }) => {
+        if (error) console.error('Supabase profile sync error:', error);
+      });
+
+      supabase.from('streaks').insert({
+        user_id: newUser.id,
+        current_streak: 0,
+        best_streak: 0,
+        completed_days: 0,
+        consistency_pct: 0
+      }).then(({ error }) => {
+        if (error) console.error('Supabase streak sync error:', error);
+      });
+    }
+
     return newUser;
   },
 
@@ -189,8 +123,7 @@ export const dataService = {
   },
 
   getUserCheckins(userId: string): DailyCheckin[] {
-    const all = getStoredCheckins();
-    return all.filter((c) => c.userId === userId);
+    return getStoredCheckins(userId);
   },
 
   getTodayCheckin(userId: string): DailyCheckin | null {
@@ -211,7 +144,14 @@ export const dataService = {
     // Calculate score
     const score = Object.values(commitments).filter(Boolean).length;
 
-    const allCheckins = getStoredCheckins();
+    let allCheckins: DailyCheckin[] = [];
+    if (typeof window !== 'undefined') {
+      const raw = localStorage.getItem(STORAGE_CHECKINS);
+      if (raw) {
+        try { allCheckins = JSON.parse(raw); } catch { allCheckins = []; }
+      }
+    }
+
     const existingIndex = allCheckins.findIndex((c) => c.userId === userId && c.date === today);
 
     const checkinObj: DailyCheckin = {
@@ -236,6 +176,42 @@ export const dataService = {
       localStorage.setItem(STORAGE_CHECKINS, JSON.stringify(allCheckins));
     }
 
+    // Update streak
+    const userCheckins = allCheckins.filter((c) => c.userId === userId);
+    const updatedStreak = calculateUserStreak(userId, userCheckins, personalDay);
+
+    // Sync to Supabase if configured
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('daily_checkins').upsert({
+        user_id: userId,
+        date: today,
+        personal_day: personalDay,
+        no_porn: commitments.noPorn,
+        no_masturbation: commitments.noMasturbation,
+        no_doomscrolling: commitments.noDoomscrolling,
+        wake_5am: commitments.wake5am,
+        meditation: commitments.meditation,
+        journaling: commitments.journaling,
+        no_food_entertainment: commitments.noFoodEntertainment,
+        movement: commitments.movement,
+        score,
+        private_reflection: privateReflection
+      }).then(({ error }) => {
+        if (error) console.error('Supabase checkin upsert error:', error);
+      });
+
+      supabase.from('streaks').upsert({
+        user_id: userId,
+        current_streak: updatedStreak.currentStreak,
+        best_streak: updatedStreak.bestStreak,
+        completed_days: updatedStreak.completedDays,
+        consistency_pct: updatedStreak.consistencyPct,
+        updated_at: new Date().toISOString()
+      }).then(({ error }) => {
+        if (error) console.error('Supabase streak upsert error:', error);
+      });
+    }
+
     return checkinObj;
   },
 
@@ -251,25 +227,50 @@ export const dataService = {
   },
 
   getCommunityStats(): CommunityStats {
+    let allCheckins: DailyCheckin[] = [];
+    let currentUser: UserProfile | null = getStoredUser();
+
+    if (typeof window !== 'undefined') {
+      const rawCheckins = localStorage.getItem(STORAGE_CHECKINS);
+      if (rawCheckins) {
+        try { allCheckins = JSON.parse(rawCheckins); } catch { allCheckins = []; }
+      }
+    }
+
+    const today = getTodayIsoString();
+    const todayCheckins = allCheckins.filter((c) => c.date === today);
+
+    // Real dynamic calculations based on registered accounts and actual check-ins
+    const totalMembers = currentUser ? 1 : 0;
+    const checkedInToday = todayCheckins.length;
+
+    const perfectCount = todayCheckins.filter((c) => c.score === 8).length;
+    const highCount = todayCheckins.filter((c) => c.score === 7).length;
+    const mediumCount = todayCheckins.filter((c) => c.score >= 5 && c.score <= 6).length;
+    const lowCount = todayCheckins.filter((c) => c.score < 5).length;
+
+    const totalScoreToday = todayCheckins.reduce((acc, c) => acc + c.score, 0);
+    const avgScoreToday = checkedInToday > 0 ? (totalScoreToday / (checkedInToday * 8)) * 100 : 0;
+
     return {
-      totalMembers: 12481,
-      checkedInToday: 6842,
-      activeStreaksTotal: 3104,
+      totalMembers,
+      checkedInToday,
+      activeStreaksTotal: checkedInToday > 0 ? 1 : 0,
       streaksByTier: {
-        sevenPlus: 5824,
-        fourteenPlus: 3102,
-        twentyOnePlus: 1487,
-        thirtyPlus: 642,
-        sixtyPlus: 91,
-        ninetyPlus: 14
+        sevenPlus: 0,
+        fourteenPlus: 0,
+        twentyOnePlus: 0,
+        thirtyPlus: 0,
+        sixtyPlus: 0,
+        ninetyPlus: 0
       },
       todayScoreDistribution: {
-        perfect: 3482,
-        high: 1621,
-        medium: 1203,
-        low: 536
+        perfect: perfectCount,
+        high: highCount,
+        medium: mediumCount,
+        low: lowCount
       },
-      communityAdherencePct: 87.4
+      communityAdherencePct: Math.round(avgScoreToday * 10) / 10
     };
   },
 
@@ -297,6 +298,21 @@ export const dataService = {
     if (typeof window !== 'undefined') {
       localStorage.setItem(STORAGE_FEED, JSON.stringify(feed));
     }
+
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('community_feed').insert({
+        user_id: userId,
+        personal_day: personalDay,
+        score,
+        reflection,
+        fire_reactions: 1,
+        ice_reactions: 0,
+        bicep_reactions: 1
+      }).then(({ error }) => {
+        if (error) console.error('Supabase feed insert error:', error);
+      });
+    }
+
     return newItem;
   },
 
@@ -348,32 +364,47 @@ export const dataService = {
   },
 
   getAdminAnalytics(): AdminAnalytics {
+    let allCheckins: DailyCheckin[] = [];
+    if (typeof window !== 'undefined') {
+      const raw = localStorage.getItem(STORAGE_CHECKINS);
+      if (raw) {
+        try { allCheckins = JSON.parse(raw); } catch { allCheckins = []; }
+      }
+    }
+
+    const currentUser = getStoredUser();
+    const totalMembers = currentUser ? 1 : 0;
+    const checkedInToday = allCheckins.filter((c) => c.date === getTodayIsoString()).length;
+    const avgScore = allCheckins.length > 0
+      ? allCheckins.reduce((acc, c) => acc + c.score, 0) / allCheckins.length
+      : 0;
+
     return {
-      totalMembers: 12481,
-      newMembersToday: 142,
-      newMembersThisWeek: 890,
-      activeMembers: 9420,
-      dailyCheckinRate: 74.8,
-      averageScore: 7.2,
+      totalMembers,
+      newMembersToday: totalMembers,
+      newMembersThisWeek: totalMembers,
+      activeMembers: totalMembers,
+      dailyCheckinRate: totalMembers > 0 ? (checkedInToday / totalMembers) * 100 : 0,
+      averageScore: Math.round(avgScore * 10) / 10,
       ruleMissRates: {
-        wake5am: 42,
-        noDoomscrolling: 38,
-        meditation: 21,
-        noFoodEntertainment: 18,
-        noPorn: 14,
-        noMasturbation: 12,
-        journaling: 11,
-        movement: 9
+        wake5am: 0,
+        noDoomscrolling: 0,
+        meditation: 0,
+        noFoodEntertainment: 0,
+        noPorn: 0,
+        noMasturbation: 0,
+        journaling: 0,
+        movement: 0
       },
       retentionRates: {
-        day1: 94.2,
-        day3: 86.5,
-        day7: 78.1,
-        day14: 69.4,
-        day21: 61.2,
-        day30: 54.8,
-        day60: 42.1,
-        day92: 38.6
+        day1: 100,
+        day3: 0,
+        day7: 0,
+        day14: 0,
+        day21: 0,
+        day30: 0,
+        day60: 0,
+        day92: 0
       }
     };
   },
@@ -381,8 +412,12 @@ export const dataService = {
   deleteUserAccount(userId: string) {
     if (typeof window !== 'undefined') {
       localStorage.removeItem(STORAGE_CURRENT_USER);
-      const allCheckins = getStoredCheckins().filter((c) => c.userId !== userId);
-      localStorage.setItem(STORAGE_CHECKINS, JSON.stringify(allCheckins));
+      localStorage.removeItem(STORAGE_CHECKINS);
+    }
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('profiles').delete().eq('id', userId).then(({ error }) => {
+        if (error) console.error('Supabase profile delete error:', error);
+      });
     }
   }
 };

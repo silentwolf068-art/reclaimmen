@@ -13,7 +13,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { dataService } from '@/lib/dataService';
-import { calculatePersonalDay } from '@/lib/dateUtils';
+import { calculatePersonalDay, TOTAL_ARC_DAYS } from '@/lib/dateUtils';
 import { UserProfile, CommitmentsState, CommunityQuestion } from '@/types';
 
 export default function CheckInPage() {
@@ -24,14 +24,14 @@ export default function CheckInPage() {
 
   // 8 Commitments State
   const [commitments, setCommitments] = useState<CommitmentsState>({
-    noPorn: true,
-    noMasturbation: true,
-    noDoomscrolling: true,
+    noPorn: false,
+    noMasturbation: false,
+    noDoomscrolling: false,
     wake5am: false,
-    meditation: true,
-    journaling: true,
-    noFoodEntertainment: true,
-    movement: true
+    meditation: false,
+    journaling: false,
+    noFoodEntertainment: false,
+    movement: false
   });
 
   const [privateReflection, setPrivateReflection] = useState('');
@@ -126,7 +126,7 @@ export default function CheckInPage() {
           <span>DAILY ROLL CALL PROTOCOL</span>
         </div>
         <h1 className="text-3xl font-extrabold text-white">
-          DAY {personalDay} <span className="text-zinc-500 font-normal text-xl">/ 92</span>
+          DAY {personalDay} <span className="text-zinc-500 font-normal text-xl">/ {TOTAL_ARC_DAYS}</span>
         </h1>
         <p className="text-xs text-zinc-400">
           Check off the commitments you completed today. Be honest with yourself.

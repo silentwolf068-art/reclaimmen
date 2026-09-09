@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { dataService } from '@/lib/dataService';
 import { CommunityStats } from '@/types';
+import { TOTAL_ARC_DAYS, WINTER_ARC_START, WINTER_ARC_END } from '@/lib/dateUtils';
 
 export default function LandingPage() {
   const [stats, setStats] = useState<CommunityStats | null>(null);
@@ -47,7 +48,7 @@ export default function LandingPage() {
 
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-mono mb-6">
           <Calendar className="w-3.5 h-3.5" />
-          <span>WINTER ARC 2026 • 92 DAYS OF DISCIPLINE</span>
+          <span>WINTER ARC 2026 • SEPT 15 → DEC 31 ({TOTAL_ARC_DAYS} DAYS)</span>
         </div>
 
         <h1 className="text-4xl md:text-6xl font-extrabold text-white tracking-tight leading-tight mb-6">
@@ -103,9 +104,9 @@ export default function LandingPage() {
             </div>
             <div>
               <div className="text-3xl md:text-4xl font-extrabold text-amber-400 font-mono">
-                {stats.streaksByTier.sevenPlus.toLocaleString()}
+                {stats.activeStreaksTotal.toLocaleString()}
               </div>
-              <div className="text-xs text-zinc-400 uppercase tracking-wider mt-1">7+ Day Streaks</div>
+              <div className="text-xs text-zinc-400 uppercase tracking-wider mt-1">Active Streaks</div>
             </div>
             <div>
               <div className="text-3xl md:text-4xl font-extrabold text-indigo-400 font-mono">
@@ -186,7 +187,7 @@ export default function LandingPage() {
             YOU DON'T NEED TO WAIT FOR MONDAY.
           </h2>
           <p className="text-zinc-300 text-sm md:text-base max-w-lg mx-auto mb-8">
-            Your 92-day personal arc begins the moment you decide to take back control. Day 1 is today.
+            Your {TOTAL_ARC_DAYS}-day personal arc begins the moment you decide to take back control. Day 1 is today.
           </p>
           <Link
             href="/join"
