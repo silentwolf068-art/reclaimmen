@@ -17,15 +17,22 @@ export interface CommitmentsState {
   journaling: boolean;
   noFoodEntertainment: boolean;
   movement: boolean;
+  // Optional / Custom Rules
+  coldShower?: boolean;
+  read10Pages?: boolean;
+  noAlcohol?: boolean;
+  customRuleName?: string;
+  customRuleDone?: boolean;
 }
 
 export interface DailyCheckin extends CommitmentsState {
   id: string;
   userId: string;
   date: string; // YYYY-MM-DD
-  personalDay: number; // 1 to 92
-  score: number; // 0 to 8
-  privateReflection?: string; // Private to user
+  personalDay: number; // 1 to 108
+  score: number;
+  totalActiveRules: number; // default 8 or custom total
+  privateReflection?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -65,6 +72,21 @@ export interface QuestionResponse {
   createdAt: string;
 }
 
+export interface ChatMessage {
+  id: string;
+  userId: string;
+  publicArcId: string;
+  anonymousUsername?: string;
+  channel: 'general' | 'urges' | 'morning5am' | 'books';
+  message: string;
+  reactions: {
+    fire: number;
+    bicep: number;
+    shield: number;
+  };
+  createdAt: string;
+}
+
 export interface CommunityFeedItem {
   id: string;
   userId: string;
@@ -91,10 +113,10 @@ export interface CommunityStats {
     ninetyPlus: number;
   };
   todayScoreDistribution: {
-    perfect: number; // 8/8
-    high: number; // 7/8
-    medium: number; // 5-6/8
-    low: number; // <5/8
+    perfect: number;
+    high: number;
+    medium: number;
+    low: number;
   };
   communityAdherencePct: number;
 }

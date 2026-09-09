@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Shield, CheckSquare, Users, Award, BookOpen, Settings, ShieldCheck, Lock } from 'lucide-react';
+import { Shield, CheckSquare, Users, Award, BookOpen, Settings, ShieldCheck, MessageSquare } from 'lucide-react';
 import { dataService } from '@/lib/dataService';
 
 export function Header() {
@@ -14,6 +14,7 @@ export function Header() {
     { href: '/dashboard', label: 'Dashboard', icon: Shield },
     { href: '/check-in', label: 'Roll Call', icon: CheckSquare },
     { href: '/community', label: 'Community', icon: Users },
+    { href: '/chat', label: 'Brotherhood Chat', icon: MessageSquare },
     { href: '/milestones', label: 'Milestones', icon: Award },
     { href: '/rules', label: 'Rules', icon: BookOpen },
     { href: '/admin', label: 'Admin', icon: ShieldCheck }
@@ -91,9 +92,9 @@ export function MobileBottomNav() {
   const mobileLinks = [
     { href: '/dashboard', label: 'Dashboard', icon: Shield },
     { href: '/check-in', label: 'Roll Call', icon: CheckSquare },
+    { href: '/chat', label: 'Chat', icon: MessageSquare },
     { href: '/community', label: 'Community', icon: Users },
-    { href: '/milestones', label: 'Badges', icon: Award },
-    { href: '/rules', label: 'Rules', icon: BookOpen }
+    { href: '/milestones', label: 'Badges', icon: Award }
   ];
 
   return (

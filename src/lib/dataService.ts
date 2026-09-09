@@ -6,6 +6,7 @@ import {
   CommunityFeedItem,
   CommunityQuestion,
   QuestionResponse,
+  ChatMessage,
   AdminAnalytics,
   CommitmentsState
 } from '@/types';
@@ -19,6 +20,7 @@ const STORAGE_CURRENT_USER = 'reclaim_men_current_user';
 const STORAGE_CHECKINS = 'reclaim_men_checkins';
 const STORAGE_FEED = 'reclaim_men_feed';
 const STORAGE_RESPONSES = 'reclaim_men_responses';
+const STORAGE_CHAT = 'reclaim_men_chat_messages';
 
 function getStoredUser(): UserProfile | null {
   if (typeof window === 'undefined') return null;
@@ -38,6 +40,17 @@ function getStoredCheckins(userId: string): DailyCheckin[] {
   try {
     const all: DailyCheckin[] = JSON.parse(raw);
     return all.filter((c) => c.userId === userId);
+  } catch {
+    return [];
+  }
+}
+
+function getStoredChat(): ChatMessage[] {
+  if (typeof window === 'undefined') return [];
+  const raw = localStorage.getItem(STORAGE_CHAT);
+  if (!raw) return [];
+  try {
+    return JSON.parse(raw);
   } catch {
     return [];
   }
@@ -80,10 +93,9 @@ export const dataService = {
 
     if (typeof window !== 'undefined') {
       localStorage.setItem(STORAGE_CURRENT_USER, JSON.stringify(newUser));
-      localStorage.setItem(STORAGE_CHECKINS, JSON.stringify([])); // FRESH USER HAS ZERO PREVIOUS CHECKINS
+      localStorage.setItem(STORAGE_CHECKINS, JSON.stringify([]));
     }
 
-    // Async sync to Supabase if configured
     if (isSupabaseConfigured && supabase) {
       supabase.from('profiles').insert({
         id: newUser.id,
@@ -141,8 +153,28 @@ export const dataService = {
     const today = getTodayIsoString();
     const personalDay = user ? calculatePersonalDay(user.startDate) : 1;
 
-    // Calculate score
-    const score = Object.values(commitments).filter(Boolean).length;
+    const baseRules = [
+      commitments.noPorn,
+      commitments.noMasturbation,
+      commitments.noDoomscrolling,
+      commitments.wake5am,
+      commitments.meditation,
+      commitments.journaling,
+      commitments.noFoodEntertainment,
+      commitments.movement
+    ];
+
+    let totalActive = 8;
+    if (commitments.coldShower !== undefined) totalActive++;
+    if (commitments.read10Pages !== undefined) totalActive++;
+    if (commitments.noAlcohol !== undefined) totalActive++;
+    if (commitments.customRuleName) totalActive++;
+
+    let passedCount = baseRules.filter(Boolean).length;
+    if (commitments.coldShower) passedCount++;
+    if (commitments.read10Pages) passedCount++;
+    if (commitments.noAlcohol) passedCount++;
+    if (commitments.customRuleDone) passedCount++;
 
     let allCheckins: DailyCheckin[] = [];
     if (typeof window !== 'undefined') {
@@ -160,7 +192,8 @@ export const dataService = {
       date: today,
       personalDay,
       ...commitments,
-      score,
+      score: passedCount,
+      totalActiveRules: totalActive,
       privateReflection,
       createdAt: existingIndex >= 0 ? allCheckins[existingIndex].createdAt : new Date().toISOString(),
       updatedAt: new Date().toISOString()
@@ -176,11 +209,9 @@ export const dataService = {
       localStorage.setItem(STORAGE_CHECKINS, JSON.stringify(allCheckins));
     }
 
-    // Update streak
     const userCheckins = allCheckins.filter((c) => c.userId === userId);
     const updatedStreak = calculateUserStreak(userId, userCheckins, personalDay);
 
-    // Sync to Supabase if configured
     if (isSupabaseConfigured && supabase) {
       supabase.from('daily_checkins').upsert({
         user_id: userId,
@@ -194,7 +225,13 @@ export const dataService = {
         journaling: commitments.journaling,
         no_food_entertainment: commitments.noFoodEntertainment,
         movement: commitments.movement,
-        score,
+        cold_shower: commitments.coldShower || false,
+        read_10_pages: commitments.read10Pages || false,
+        no_alcohol: commitments.noAlcohol || false,
+        custom_rule_name: commitments.customRuleName,
+        custom_rule_done: commitments.customRuleDone || false,
+        score: passedCount,
+        total_active_rules: totalActive,
         private_reflection: privateReflection
       }).then(({ error }) => {
         if (error) console.error('Supabase checkin upsert error:', error);
@@ -226,6 +263,61 @@ export const dataService = {
     return evaluateUserBadges(bestStreak);
   },
 
+  getChatMessages(channel: 'general' | 'urges' | 'morning5am' | 'books'): ChatMessage[] {
+    const all = getStoredChat();
+    return all.filter((m) => m.channel === channel);
+  },
+
+  addChatMessage(userId: string, channel: 'general' | 'urges' | 'morning5am' | 'books', text: string): ChatMessage {
+    const user = this.getCurrentUser();
+    const newMsg: ChatMessage = {
+      id: `msg-${Date.now()}`,
+      userId,
+      publicArcId: user?.publicArcId || 'ARC-ANON',
+      anonymousUsername: user?.anonymousUsername,
+      channel,
+      message: text,
+      reactions: { fire: 1, bicep: 1, shield: 0 },
+      createdAt: new Date().toISOString()
+    };
+
+    const all = getStoredChat();
+    all.push(newMsg);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(STORAGE_CHAT, JSON.stringify(all));
+    }
+
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('chat_messages').insert({
+        user_id: userId,
+        public_arc_id: newMsg.publicArcId,
+        anonymous_username: newMsg.anonymousUsername,
+        channel,
+        message: text,
+        fire_reactions: 1,
+        bicep_reactions: 1,
+        shield_reactions: 0
+      }).then(({ error }) => {
+        if (error) console.error('Supabase chat insert error:', error);
+      });
+    }
+
+    return newMsg;
+  },
+
+  reactToChatMessage(messageId: string, type: 'fire' | 'bicep' | 'shield') {
+    const all = getStoredChat();
+    const msg = all.find((m) => m.id === messageId);
+    if (msg) {
+      if (type === 'fire') msg.reactions.fire++;
+      if (type === 'bicep') msg.reactions.bicep++;
+      if (type === 'shield') msg.reactions.shield++;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(STORAGE_CHAT, JSON.stringify(all));
+      }
+    }
+  },
+
   getCommunityStats(): CommunityStats {
     let allCheckins: DailyCheckin[] = [];
     let currentUser: UserProfile | null = getStoredUser();
@@ -240,12 +332,11 @@ export const dataService = {
     const today = getTodayIsoString();
     const todayCheckins = allCheckins.filter((c) => c.date === today);
 
-    // Real dynamic calculations based on registered accounts and actual check-ins
     const totalMembers = currentUser ? 1 : 0;
     const checkedInToday = todayCheckins.length;
 
-    const perfectCount = todayCheckins.filter((c) => c.score === 8).length;
-    const highCount = todayCheckins.filter((c) => c.score === 7).length;
+    const perfectCount = todayCheckins.filter((c) => c.score === (c.totalActiveRules || 8)).length;
+    const highCount = todayCheckins.filter((c) => c.score >= 7 && c.score < (c.totalActiveRules || 8)).length;
     const mediumCount = todayCheckins.filter((c) => c.score >= 5 && c.score <= 6).length;
     const lowCount = todayCheckins.filter((c) => c.score < 5).length;
 
